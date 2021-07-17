@@ -1,4 +1,9 @@
 import os, psycopg2, json, io, base64
+import numpy as np
+import math
+import pandas as pd
+from scipy.sparse import data
+from sklearn import preprocessing
 from flask import Flask, request, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 # maching learning
@@ -19,68 +24,170 @@ db = SQLAlchemy(app)
 # }
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://%(user)s:\
 # %(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
-con = psycopg2.connect(database="delati", user="modulo4", password="modulo4", host="128.199.1.222", port="5432")
-cursor = con.cursor()
+
 
 
 def load_data():
+    con = psycopg2.connect(database="delati", user="modulo4", password="modulo4", host="128.199.1.222", port="5432")
+    cursor = con.cursor()
     cursor.execute("select distinct o.htitulo_cat, o.htitulo from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null order by 1,2 limit 500;")
     result = cursor.fetchall()
     return result
 
-@app.route("/")
-def init():
-    data = load_data()
-    json_result = json.dumps(data)
-    return json_result
-
 @app.route("/kmeans", methods = ['GET', 'POST', 'DELETE'])
 def kmeans():
+    con = psycopg2.connect(database="delati", user="modulo4", password="modulo4", host="128.199.1.222", port="5432")
+    cursor = con.cursor()
+    if request.method == 'GET':
+        return jsonify(load_data())
     if request.method == 'POST':
-        total_data = load_data()
-        data = []
-        for selected_tuple in total_data:
-            data.append(' '.join(selected_tuple))
-        # print(data)
-        # CATCH DATA FROM BODY
         body = request.get_json()
+        query = cursor.execute(body["query"])
+        total_data = cursor.fetchall()
+        # total_data = load_data()
+        # CATCH DATA FROM BODY
+        columns_name=body["columns"]
         n_clusters=body["n_clusters"]
         init= body['init']
         max_iter= body['max_iter']
         # end requests
-        vectorizer = TfidfVectorizer(min_df = 0.01, ngram_range = (2,2))
-        vec = vectorizer.fit(data)   # train vec using list1
-        vectorized = vec.transform(data)   # transform list1 using vec
-        # print(vectorized)
+        dataframe = pd.DataFrame(total_data, columns=columns_name)#.values #.tolist()
+        # print(dataframe)
+        label_encoder = preprocessing.LabelEncoder()
+        transformed_data = dataframe.apply(label_encoder.fit_transform)
+        # print(transformed_data)
         kmeans = KMeans(n_clusters=n_clusters, init=init, max_iter=max_iter, n_init=1, random_state=0)
-        pred_y = kmeans.fit_predict(vectorized)
-
-        clusters = {}
-        n = 0
-        for item in pred_y:
-            if item in clusters:
-                clusters[item].append(data[n])
-            else:
-                clusters[item] = [data[n]]
-            n +=1
-        result = {}
-        for item in clusters:
-            temporal_cluster = 'Cluster {}'.format(item)
-            result[temporal_cluster] = len(clusters[item])
-            # print ("Cluster {}, Length: {}".format(item, len(clusters[item])))
-            # for i in clusters[item]:
-            #     print(i)
+        pred_y = kmeans.fit_predict(transformed_data)
+        elements = kmeans.labels_  # values from kmeans.fit_predict(transformed_data)
         centroids = kmeans.cluster_centers_
-        # print(centroids)
-        plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s=50, c='red')
+        centroids_values = []
+        # print("!!!!!!!!!!")
+        print(centroids)
+        for cd in centroids:
+            min_cd0 = math.floor(cd[0])
+            max_cd0 = math.ceil(cd[0])
+            min_cd1 = math.floor(cd[1])
+            max_cd1 = math.ceil(cd[1])
+            find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == min_cd0) & (transformed_data[columns_name[1]] == min_cd1)]
+            if find_centroids.values.any(): 
+                centroids_values.append(find_centroids.values.tolist())
+                continue
+            else:
+                find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == min_cd0) & (transformed_data[columns_name[1]] == max_cd1)]
+                if find_centroids.values.any(): 
+                    centroids_values.append(find_centroids.values.tolist())
+                    continue
+                else:
+                    find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == max_cd0) & (transformed_data[columns_name[1]] == min_cd1)]
+                    if find_centroids.values.any(): 
+                        centroids_values.append(find_centroids.values.tolist())
+                        continue
+                    else:
+                        find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == max_cd0) & (transformed_data[columns_name[1]] == max_cd1)]
+                        if find_centroids.values.any(): 
+                            centroids_values.append(find_centroids.values.tolist())
+                            continue
+                        else:
+                            centroids_values.append([])
+
+        
+        # for column in range(len(dataframe.columns)):
+        #     centroid_column = centroids[:,column]
+        #     X_column = transformed_data.iloc[:,column].values # encode data
+        #     array = np.asarray(X_column)
+        #     column_values = []
+        #     for value in centroid_column:
+        #         idx = (np.abs(X_column - value)).argmin()
+        #         column_values.append(array[idx])
+        #     centroids_values.append(column_values)
+        # centroids_values = np.transpose(centroids_values)
+        # print(centroids_values[0])
+        # print(centroids_values[1])
+        # for i in range(len(centroids_values[0])):
+        #     find_centroids = transformed_data.loc[(transformed_data[columns_name[0]] == centroids_values[0][i]) 
+        #     & (transformed_data[columns_name[1]] == centroids_values[1][i])
+        #         ]
+        #     print(find_centroids)
+
+        # plt.scatter(transformed_data[columns_name[0]].values,transformed_data[columns_name[1]].values, s=10, c='green')
+        colors = "bgcmykw"
+        for cluster in range(n_clusters):
+            plt.scatter(transformed_data.iloc[pred_y==cluster, 0], transformed_data.iloc[pred_y==cluster, 1], s=10, c=colors[cluster], label =f'Cluster {cluster}')
+        plt.scatter(centroids[:, 0], centroids[:, 1], s=100, c='red')
+        print("==========")
+        dataframe["cluster"] = elements
+        # dataframe.sort_values('cluster')
+        # print(centroids_values)
+        # print("TITLE OF CENTROIDS")
+        # print('0: ', [])
+        # print('1: ',dataframe.iloc[59])
+        # print('2: ',dataframe.iloc[91])
+        # print('3: ',dataframe.iloc[68])
+        # print('4: ',dataframe.iloc[46])
+        # clusters['Cluster {}'.format(elements[index])] = [(dataframe.iloc[index].values)]
+        
+        result = {}
+        for item in range(n_clusters):
+            temporal_cluster = 'Cluster {}'.format(item)
+            length_actual_cluster = int(dataframe["cluster"].value_counts()[item])
+            decimal_frequency_actual_cluster = float(dataframe["cluster"].value_counts(normalize=True)[item])
+            result[temporal_cluster] = {
+                "length": length_actual_cluster,
+                "percentage":'{} %'.format(round(decimal_frequency_actual_cluster*100, 2)),
+                "title_cluster": (dataframe.iloc[centroids_values[item][:1]]).values.tolist()
+            }
+
         my_stringIObytes = io.BytesIO()
-        plt.savefig(my_stringIObytes, format='jpg')
+        # plt.savefig(my_stringIObytes, format='jpg')
+        plt.savefig("graphic.jpg")
         my_stringIObytes.seek(0)
         my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
-        # plt.savefig('/home/diego/Downloads/works.png')
+        result["centroids"] = centroids.tolist()
         result["graphic"] = my_base64_jpgData.decode()
         return jsonify(result)
 
+        # data = []
+        # for selected_tuple in total_data:
+        #     data.append(' '.join(selected_tuple))
+        # vectorizer = TfidfVectorizer(min_df = 0.01, ngram_range = (2,2))
+        # # print(len(vectorizer))
+        # vec = vectorizer.fit(data)   # train vec using list1
+        # vectorized = vec.transform(data)   # transform list1 using vec
+        # print(vectorized)
+        # kmeans = KMeans(n_clusters=n_clusters, init=init, max_iter=max_iter, n_init=1, random_state=0)
+        # pred_y = kmeans.fit_predict(vectorized)
+        # clusters = {}
+        # n = 0
+        # for item in pred_y:
+        #     # print(item)
+        #     if item in clusters: 
+        #         clusters[item].append(data[n])
+        #     else:
+        #         clusters[item] = [data[n]]
+        #     n +=1
+        # result = {}
+        # for item in clusters:
+        #     # print(item)
+        #     temporal_cluster = 'Cluster {}'.format(item)
+        #     # print("=====", clusters[item])
+        #     result[temporal_cluster] = {
+        #         "length":len(clusters[item]),
+        #         "percentage":'{} %'.format(round(len(clusters[item])/len(pred_y)*100, 2)),
+        #         "representative": max(set(clusters[item]), key=clusters[item].count), 
+        #         "elements": clusters[item]
+        #     }
+        #     # print ("Cluster {}, Length: {}".format(item, len(clusters[item])))
+        # centroids = kmeans.cluster_centers_
+        # # print(centroids)
+        # plt.scatter(centroids[:, 0], centroids[:, 1], s=50, c='red')
+        # my_stringIObytes = io.BytesIO()
+        # plt.savefig(my_stringIObytes, format='jpg')
+        # my_stringIObytes.seek(0)
+        # my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
+        # result["centroids"] = centroids.tolist()
+        # result["graphic"] = my_base64_jpgData.decode()
+        # # print(centroids)
+        # return jsonify(result)
 
 if __name__ == '__main__':
     app.run()
