@@ -1,17 +1,20 @@
+# IMPORTS
 import os, psycopg2, json, io, base64
 import numpy as np
 import math
 import pandas as pd
-from scipy.sparse import data
+# LIB
+from scipy import spatial
 from sklearn import preprocessing
+# FLASK 
 from flask import Flask, request, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 # maching learning
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
-app = Flask(__name__)
 
+app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -58,57 +61,19 @@ def kmeans():
         # print(transformed_data)
         kmeans = KMeans(n_clusters=n_clusters, init=init, max_iter=max_iter, n_init=1, random_state=0)
         pred_y = kmeans.fit_predict(transformed_data)
+        print(pred_y)
         elements = kmeans.labels_  # values from kmeans.fit_predict(transformed_data)
         centroids = kmeans.cluster_centers_
-        centroids_values = []
-        # print("!!!!!!!!!!")
         print(centroids)
+        centroids_values = []
         for cd in centroids:
-            min_cd0 = math.floor(cd[0])
-            max_cd0 = math.ceil(cd[0])
-            min_cd1 = math.floor(cd[1])
-            max_cd1 = math.ceil(cd[1])
-            find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == min_cd0) & (transformed_data[columns_name[1]] == min_cd1)]
-            if find_centroids.values.any(): 
-                centroids_values.append(find_centroids.values.tolist())
-                continue
-            else:
-                find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == min_cd0) & (transformed_data[columns_name[1]] == max_cd1)]
-                if find_centroids.values.any(): 
-                    centroids_values.append(find_centroids.values.tolist())
-                    continue
-                else:
-                    find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == max_cd0) & (transformed_data[columns_name[1]] == min_cd1)]
-                    if find_centroids.values.any(): 
-                        centroids_values.append(find_centroids.values.tolist())
-                        continue
-                    else:
-                        find_centroids = transformed_data.index[(transformed_data[columns_name[0]] == max_cd0) & (transformed_data[columns_name[1]] == max_cd1)]
-                        if find_centroids.values.any(): 
-                            centroids_values.append(find_centroids.values.tolist())
-                            continue
-                        else:
-                            centroids_values.append([])
-
-        
-        # for column in range(len(dataframe.columns)):
-        #     centroid_column = centroids[:,column]
-        #     X_column = transformed_data.iloc[:,column].values # encode data
-        #     array = np.asarray(X_column)
-        #     column_values = []
-        #     for value in centroid_column:
-        #         idx = (np.abs(X_column - value)).argmin()
-        #         column_values.append(array[idx])
-        #     centroids_values.append(column_values)
-        # centroids_values = np.transpose(centroids_values)
-        # print(centroids_values[0])
-        # print(centroids_values[1])
-        # for i in range(len(centroids_values[0])):
-        #     find_centroids = transformed_data.loc[(transformed_data[columns_name[0]] == centroids_values[0][i]) 
-        #     & (transformed_data[columns_name[1]] == centroids_values[1][i])
-        #         ]
-        #     print(find_centroids)
-
+            # airports = [(10,10),(20,20),(30,30),(40,40)]
+            airports = transformed_data
+            tree = spatial.KDTree(airports)
+            found = tree.query(cd)
+            print(found)
+            centroids_values.append(found[1])
+        print(centroids_values)
         # plt.scatter(transformed_data[columns_name[0]].values,transformed_data[columns_name[1]].values, s=10, c='green')
         colors = "bgcmykw"
         for cluster in range(n_clusters):
@@ -118,15 +83,8 @@ def kmeans():
         dataframe["cluster"] = elements
         # dataframe.sort_values('cluster')
         # print(centroids_values)
-        # print("TITLE OF CENTROIDS")
-        # print('0: ', [])
-        # print('1: ',dataframe.iloc[59])
-        # print('2: ',dataframe.iloc[91])
-        # print('3: ',dataframe.iloc[68])
-        # print('4: ',dataframe.iloc[46])
-        # clusters['Cluster {}'.format(elements[index])] = [(dataframe.iloc[index].values)]
-        
         result = {}
+        result["data"] = transformed_data.to_dict()
         for item in range(n_clusters):
             temporal_cluster = 'Cluster {}'.format(item)
             length_actual_cluster = int(dataframe["cluster"].value_counts()[item])
@@ -134,12 +92,13 @@ def kmeans():
             result[temporal_cluster] = {
                 "length": length_actual_cluster,
                 "percentage":'{} %'.format(round(decimal_frequency_actual_cluster*100, 2)),
-                "title_cluster": (dataframe.iloc[centroids_values[item][:1]]).values.tolist()
+                "title_cluster": json.loads(pd.Series(dataframe.iloc[centroids_values[item]]).to_json(orient='values'))
+                # "title_cluster": json.loads(pd.Series(dataframe.iloc[centroids_values[item]]).to_json())
             }
 
         my_stringIObytes = io.BytesIO()
         # plt.savefig(my_stringIObytes, format='jpg')
-        plt.savefig("graphic.jpg")
+        plt.savefig("graphic2.jpg")
         my_stringIObytes.seek(0)
         my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
         result["centroids"] = centroids.tolist()
@@ -191,3 +150,10 @@ def kmeans():
 
 if __name__ == '__main__':
     app.run()
+
+
+
+
+
+
+
