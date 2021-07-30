@@ -5,6 +5,7 @@ import math
 import pandas as pd
 # LIB
 from scipy import spatial
+from scipy.sparse import data
 from sklearn import preprocessing
 # FLASK 
 from flask import Flask, request, request, jsonify
@@ -81,10 +82,12 @@ def kmeans():
         plt.scatter(centroids[:, 0], centroids[:, 1], s=100, c='red')
         print("==========")
         dataframe["cluster"] = elements
-        # dataframe.sort_values('cluster')
+        dataframe.sort_values(['cluster'], ascending=False)
         # print(centroids_values)
+        # print(dataframe.sort_values(['cluster'], ascending=True))
         result = {}
-        result["data"] = transformed_data.to_dict()
+        # result[""]
+        result["data"] = json.loads(dataframe.sort_values(['cluster'], ascending=True).to_json(orient='table')) #orient='table'
         for item in range(n_clusters):
             temporal_cluster = 'Cluster {}'.format(item)
             length_actual_cluster = int(dataframe["cluster"].value_counts()[item])
@@ -97,56 +100,13 @@ def kmeans():
             }
 
         my_stringIObytes = io.BytesIO()
-        # plt.savefig(my_stringIObytes, format='jpg')
-        plt.savefig("graphic2.jpg")
+        plt.savefig(my_stringIObytes, format='jpg')
+        # plt.savefig("graphic2.jpg")
         my_stringIObytes.seek(0)
         my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
         result["centroids"] = centroids.tolist()
         result["graphic"] = my_base64_jpgData.decode()
         return jsonify(result)
-
-        # data = []
-        # for selected_tuple in total_data:
-        #     data.append(' '.join(selected_tuple))
-        # vectorizer = TfidfVectorizer(min_df = 0.01, ngram_range = (2,2))
-        # # print(len(vectorizer))
-        # vec = vectorizer.fit(data)   # train vec using list1
-        # vectorized = vec.transform(data)   # transform list1 using vec
-        # print(vectorized)
-        # kmeans = KMeans(n_clusters=n_clusters, init=init, max_iter=max_iter, n_init=1, random_state=0)
-        # pred_y = kmeans.fit_predict(vectorized)
-        # clusters = {}
-        # n = 0
-        # for item in pred_y:
-        #     # print(item)
-        #     if item in clusters: 
-        #         clusters[item].append(data[n])
-        #     else:
-        #         clusters[item] = [data[n]]
-        #     n +=1
-        # result = {}
-        # for item in clusters:
-        #     # print(item)
-        #     temporal_cluster = 'Cluster {}'.format(item)
-        #     # print("=====", clusters[item])
-        #     result[temporal_cluster] = {
-        #         "length":len(clusters[item]),
-        #         "percentage":'{} %'.format(round(len(clusters[item])/len(pred_y)*100, 2)),
-        #         "representative": max(set(clusters[item]), key=clusters[item].count), 
-        #         "elements": clusters[item]
-        #     }
-        #     # print ("Cluster {}, Length: {}".format(item, len(clusters[item])))
-        # centroids = kmeans.cluster_centers_
-        # # print(centroids)
-        # plt.scatter(centroids[:, 0], centroids[:, 1], s=50, c='red')
-        # my_stringIObytes = io.BytesIO()
-        # plt.savefig(my_stringIObytes, format='jpg')
-        # my_stringIObytes.seek(0)
-        # my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
-        # result["centroids"] = centroids.tolist()
-        # result["graphic"] = my_base64_jpgData.decode()
-        # # print(centroids)
-        # return jsonify(result)
 
 if __name__ == '__main__':
     app.run()
