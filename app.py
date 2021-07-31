@@ -9,6 +9,7 @@ from scipy.sparse import data
 from sklearn import preprocessing
 # FLASK 
 from flask import Flask, request, request, jsonify
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 # maching learning
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -16,6 +17,7 @@ from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
 
 app = Flask(__name__)
+cors = CORS(app, resources={r"*": {"origins": "*"}})
 app.config.from_object(os.environ['APP_SETTINGS'])
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -87,6 +89,8 @@ def kmeans():
         # print(dataframe.sort_values(['cluster'], ascending=True))
         result = {}
         # result[""]
+        columns_name.append("clusters")
+        result["columns"] = columns_name
         result["data"] = json.loads(dataframe.sort_values(['cluster'], ascending=True).to_json(orient='table')) #orient='table'
         for item in range(n_clusters):
             temporal_cluster = 'Cluster {}'.format(item)
@@ -106,7 +110,8 @@ def kmeans():
         my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
         result["centroids"] = centroids.tolist()
         result["graphic"] = my_base64_jpgData.decode()
-        return jsonify(result)
+        response = jsonify(result)
+        return response
 
 if __name__ == '__main__':
     app.run()
