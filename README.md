@@ -1,7 +1,9 @@
 # t-ml-backend
 #Link del backend en producción heroku: https://t-ml-backend.herokuapp.com/
 #Endpoints:
+_____________
 > get ALgorithms :  METHOD: GET https://t-ml-backend.herokuapp.com/algorithms
+_____________
 > kmeans : METHOD POST https://t-ml-backend.herokuapp.com/kmeans
 ```
           {
