@@ -40,6 +40,13 @@ def load_data():
     result = cursor.fetchall()
     return result
 
+@app.route("/algorithms", methods = ['GET', 'POST'])
+def algorithms():
+    name_algorithms = ['kmeans', 'spectral']
+    return jsonify({
+        'algorithms':name_algorithms
+        })
+
 @app.route("/kmeans", methods = ['GET', 'POST', 'DELETE'])
 def kmeans():
     con = psycopg2.connect(database="delati", user="modulo4", password="modulo4", host="128.199.1.222", port="5432")
@@ -80,8 +87,14 @@ def kmeans():
         # plt.scatter(transformed_data[columns_name[0]].values,transformed_data[columns_name[1]].values, s=10, c='green')
         colors = "bgcmykw"
         for cluster in range(n_clusters):
-            plt.scatter(transformed_data.iloc[pred_y==cluster, 0], transformed_data.iloc[pred_y==cluster, 1], s=10, c=colors[cluster], label =f'Cluster {cluster}')
-        plt.scatter(centroids[:, 0], centroids[:, 1], s=100, c='red')
+            # print(cluster)
+            plt.scatter(transformed_data.iloc[pred_y==cluster, 0], transformed_data.iloc[pred_y==cluster, 1], s=10, c=colors[cluster])
+            scatter = plt.scatter(centroids[cluster, 0], centroids[cluster, 1], s=120, c=colors[cluster],alpha=0.3, label=f"Cluster {cluster}")
+            plt.legend(title='Clusters', loc='upper left', fontsize='xx-small')
+            # legend1 = plt.legend(*scatter.legend_elements(),
+            #         loc="lower left", title="Clusters")
+        plt.xlabel(columns_name[0])
+        plt.ylabel(columns_name[1])
         print("==========")
         dataframe["cluster"] = elements
         dataframe.sort_values(['cluster'], ascending=False)
@@ -92,17 +105,20 @@ def kmeans():
         columns_name.append("clusters")
         result["columns"] = columns_name
         result["data"] = json.loads(dataframe.sort_values(['cluster'], ascending=True).to_json(orient='table')) #orient='table'
+        clusters = []
         for item in range(n_clusters):
             temporal_cluster = 'Cluster {}'.format(item)
             length_actual_cluster = int(dataframe["cluster"].value_counts()[item])
             decimal_frequency_actual_cluster = float(dataframe["cluster"].value_counts(normalize=True)[item])
-            result[temporal_cluster] = {
+            obj = {
+                "cluster": temporal_cluster,
                 "length": length_actual_cluster,
                 "percentage":'{} %'.format(round(decimal_frequency_actual_cluster*100, 2)),
-                "title_cluster": json.loads(pd.Series(dataframe.iloc[centroids_values[item]]).to_json(orient='values'))
+                "title_cluster": json.loads((dataframe.iloc[centroids_values[item]]).to_json(orient='values'))
                 # "title_cluster": json.loads(pd.Series(dataframe.iloc[centroids_values[item]]).to_json())
             }
-
+            clusters.append(obj)
+        result["clusters"] = clusters
         my_stringIObytes = io.BytesIO()
         plt.savefig(my_stringIObytes, format='jpg')
         # plt.savefig("graphic2.jpg")
