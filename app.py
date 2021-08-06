@@ -75,15 +75,16 @@ def kmeans():
         elements = kmeans.labels_  # values from kmeans.fit_predict(transformed_data)
         centroids = kmeans.cluster_centers_
         print(centroids)
-        centroids_values = []
+        centroids_values = [] # for search in dataframe
+        centroids_all_data = [] # centroids details
         for cd in centroids:
             # airports = [(10,10),(20,20),(30,30),(40,40)]
             airports = transformed_data
             tree = spatial.KDTree(airports)
             found = tree.query(cd)
-            print(found)
             centroids_values.append(found[1])
-        print(centroids_values)
+            centroids_all_data.append(found)
+        # print(centroids_values)
         # plt.scatter(transformed_data[columns_name[0]].values,transformed_data[columns_name[1]].values, s=10, c='green')
         colors = "bgcmykw"
         for cluster in range(n_clusters):
@@ -103,6 +104,16 @@ def kmeans():
         result = {}
         # result[""]
         columns_name.append("clusters")
+        centroids_details = []
+        x = 0
+        for _centroid in centroids_all_data:
+            obj = {}
+            obj["point"] = (centroids.tolist())[x]
+            obj["distance"] = float(_centroid[0])
+            obj["position"] = int(_centroid[1])
+            centroids_details.append(obj)
+            x+=1
+        result["centroids"] = centroids_details
         result["columns"] = columns_name
         result["data"] = json.loads(dataframe.sort_values(['cluster'], ascending=True).to_json(orient='table')) #orient='table'
         clusters = []
@@ -124,8 +135,8 @@ def kmeans():
         # plt.savefig("graphic2.jpg")
         my_stringIObytes.seek(0)
         my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
-        result["centroids"] = centroids.tolist()
         result["graphic"] = my_base64_jpgData.decode()
+        plt.clf() #clear current image plt
         response = jsonify(result)
         return response
 
