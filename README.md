@@ -5,6 +5,8 @@ _____________
 > get ALgorithms :  METHOD: GET https://t-ml-backend.herokuapp.com/algorithms
 _____________
 > kmeans : METHOD POST https://t-ml-backend.herokuapp.com/kmeans
+_____________
+>QUERY: 
 ```
           {
     "query":"select distinct o.htitulo_cat, o.htitulo from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null order       by 1,2 limit 500;",
