@@ -5,7 +5,7 @@ _______
 _______
 #Endpoints:
 _____________
-> get ALgorithms :  METHOD: GET https://js17-ml-backend.herokuapp.com/algorithms
+> get Algorithms :  METHOD: GET https://js17-ml-backend.herokuapp.com/algorithms
 _____________
 > kmeans : METHOD POST https://js17-ml-backend.herokuapp.com/kmeans
 _____________
