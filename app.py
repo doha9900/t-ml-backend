@@ -37,6 +37,7 @@ def load_data():
     con = psycopg2.connect(database="delati", user="modulo4", password="modulo4", host="128.199.1.222", port="5432")
     cursor = con.cursor()
     cursor.execute("select distinct o.htitulo_cat, o.htitulo from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null order by 1,2 limit 500;")
+    # cursor.execute("select o.htitulo_cat as categoria,o.htitulo as perfil, w.pagina_web,o.empresa,o.lugar,o.salario,date_part('year',o.fecha_publicacion) as periodo, f_dimPerfilOferta(o.id_oferta,7) as funciones, f_dimPerfilOferta(o.id_oferta,1) as conocimiento, f_dimPerfilOferta(o.id_oferta,3) as habilidades, f_dimPerfilOferta(o.id_oferta,2) as competencias, f_dimPerfilOferta(o.id_oferta,17) as certificaciones, f_dimPuestoEmpleo(o.id_oferta,5) as beneficio, f_dimPerfilOferta(o.id_oferta,11) as formacion from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null;")
     result = cursor.fetchall()
     return result
 
@@ -59,12 +60,13 @@ def kmeans():
         total_data = cursor.fetchall()
         # total_data = load_data()
         # CATCH DATA FROM BODY
-        columns_name=body["columns"]
+        # columns_name=body["columns"]
         n_clusters=body["n_clusters"]
         init= body['init']
         max_iter= body['max_iter']
         # end requests
-        dataframe = pd.DataFrame(total_data, columns=columns_name)#.values #.tolist()
+        field_names = [i[0] for i in cursor.description]
+        dataframe = pd.DataFrame(total_data, columns=field_names)#.values #.tolist()
         # print(dataframe)
         label_encoder = preprocessing.LabelEncoder()
         transformed_data = dataframe.apply(label_encoder.fit_transform)
@@ -94,8 +96,8 @@ def kmeans():
             plt.legend(title='Clusters', loc='upper left', fontsize='xx-small')
             # legend1 = plt.legend(*scatter.legend_elements(),
             #         loc="lower left", title="Clusters")
-        plt.xlabel(columns_name[0])
-        plt.ylabel(columns_name[1])
+        plt.xlabel(field_names[0])
+        plt.ylabel(field_names[1])
         print("==========")
         dataframe["cluster"] = elements
         dataframe.sort_values(['cluster'], ascending=False)
@@ -103,7 +105,7 @@ def kmeans():
         # print(dataframe.sort_values(['cluster'], ascending=True))
         result = {}
         # result[""]
-        columns_name.append("clusters")
+        field_names.append("cluster")
         centroids_details = []
         x = 0
         for _centroid in centroids_all_data:
@@ -111,10 +113,12 @@ def kmeans():
             obj["point"] = (centroids.tolist())[x]
             obj["distance"] = float(_centroid[0])
             obj["position"] = int(_centroid[1])
+            obj["title_cluster"]= json.loads((dataframe.iloc[centroids_values[x]]).to_json(orient='values'))
+
             centroids_details.append(obj)
             x+=1
         result["centroids"] = centroids_details
-        result["columns"] = columns_name
+        result["columns"] = field_names
         result["data"] = json.loads(dataframe.sort_values(['cluster'], ascending=True).to_json(orient='table')) #orient='table'
         clusters = []
         for item in range(n_clusters):
