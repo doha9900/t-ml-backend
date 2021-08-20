@@ -36,8 +36,9 @@ db = SQLAlchemy(app)
 def load_data():
     con = psycopg2.connect(database="delati", user="modulo4", password="modulo4", host="128.199.1.222", port="5432")
     cursor = con.cursor()
-    cursor.execute("select distinct o.htitulo_cat, o.htitulo from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null order by 1,2 limit 500;")
+    # cursor.execute("select distinct o.htitulo_cat, o.htitulo from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null order by 1,2 limit 500;")
     # cursor.execute("select o.htitulo_cat as categoria,o.htitulo as perfil, w.pagina_web,o.empresa,o.lugar,o.salario,date_part('year',o.fecha_publicacion) as periodo, f_dimPerfilOferta(o.id_oferta,7) as funciones, f_dimPerfilOferta(o.id_oferta,1) as conocimiento, f_dimPerfilOferta(o.id_oferta,3) as habilidades, f_dimPerfilOferta(o.id_oferta,2) as competencias, f_dimPerfilOferta(o.id_oferta,17) as certificaciones, f_dimPuestoEmpleo(o.id_oferta,5) as beneficio, f_dimPerfilOferta(o.id_oferta,11) as formacion from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null;")
+    cursor.execute("select o.htitulo_cat as categoria,o.htitulo as perfil, w.pagina_web,o.empresa,o.lugar,o.salario,date_part('year',o.fecha_publicacion) as periodo, f_dimPerfilOferta(o.id_oferta,7) as funciones, f_dimPerfilOferta(o.id_oferta,1) as conocimiento, f_dimPerfilOferta(o.id_oferta,3) as habilidades, f_dimPerfilOferta(o.id_oferta,2) as competencias, f_dimPerfilOferta(o.id_oferta,17) as certificaciones, f_dimPuestoEmpleo(o.id_oferta,5) as beneficio, f_dimPerfilOferta(o.id_oferta,11) as formacion from webscraping w inner join oferta o on (w.id_webscraping=o.id_webscraping) where o.id_estado is null limit 500;")
     result = cursor.fetchall()
     return result
 
@@ -63,8 +64,10 @@ def kmeans():
         # columns_name=body["columns"]
         n_clusters=body["n_clusters"]
         init= body['init']
-        max_iter= body['max_iter']
-        # end requests
+        max_iter= body['max_iter']        
+        axis_x= int(body['axis_x'])
+        axis_y= int(body['axis_y'])
+        # end requests+
         field_names = [i[0] for i in cursor.description]
         dataframe = pd.DataFrame(total_data, columns=field_names)#.values #.tolist()
         # print(dataframe)
@@ -88,16 +91,16 @@ def kmeans():
             centroids_all_data.append(found)
         # print(centroids_values)
         # plt.scatter(transformed_data[columns_name[0]].values,transformed_data[columns_name[1]].values, s=10, c='green')
-        colors = "bgcmykw"
+        colors = "gcmykwb"
         for cluster in range(n_clusters):
             # print(cluster)
-            plt.scatter(transformed_data.iloc[pred_y==cluster, 0], transformed_data.iloc[pred_y==cluster, 1], s=10, c=colors[cluster])
+            plt.scatter(transformed_data.iloc[pred_y==cluster, axis_x], transformed_data.iloc[pred_y==cluster, axis_y], s=10, c=colors[cluster])
             scatter = plt.scatter(centroids[cluster, 0], centroids[cluster, 1], s=120, c=colors[cluster],alpha=0.3, label=f"Cluster {cluster}")
             plt.legend(title='Clusters', loc='upper left', fontsize='xx-small')
             # legend1 = plt.legend(*scatter.legend_elements(),
             #         loc="lower left", title="Clusters")
-        plt.xlabel(field_names[0])
-        plt.ylabel(field_names[1])
+        plt.xlabel(field_names[axis_x])
+        plt.ylabel(field_names[axis_y])
         print("==========")
         dataframe["cluster"] = elements
         dataframe.sort_values(['cluster'], ascending=False)
@@ -118,6 +121,9 @@ def kmeans():
             centroids_details.append(obj)
             x+=1
         result["centroids"] = centroids_details
+        result["inertia"] = kmeans.inertia_
+        result["n_iter"] = kmeans.n_iter_
+        result["total_instances"] = len(dataframe.index)
         result["columns"] = field_names
         result["data"] = json.loads(dataframe.sort_values(['cluster'], ascending=True).to_json(orient='table')) #orient='table'
         clusters = []
@@ -128,7 +134,7 @@ def kmeans():
             obj = {
                 "cluster": temporal_cluster,
                 "length": length_actual_cluster,
-                "percentage":'{} %'.format(round(decimal_frequency_actual_cluster*100, 2)),
+                "percentage": (round(decimal_frequency_actual_cluster*100, 2)),
                 "title_cluster": json.loads((dataframe.iloc[centroids_values[item]]).to_json(orient='values'))
                 # "title_cluster": json.loads(pd.Series(dataframe.iloc[centroids_values[item]]).to_json())
             }
