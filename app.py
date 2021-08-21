@@ -95,7 +95,7 @@ def kmeans():
         for cluster in range(n_clusters):
             # print(cluster)
             plt.scatter(transformed_data.iloc[pred_y==cluster, axis_x], transformed_data.iloc[pred_y==cluster, axis_y], s=10, c=colors[cluster])
-            scatter = plt.scatter(centroids[cluster, 0], centroids[cluster, 1], s=120, c=colors[cluster],alpha=0.3, label=f"Cluster {cluster}")
+            scatter = plt.scatter(centroids[cluster, axis_x], centroids[cluster, axis_y], s=120, c=colors[cluster],alpha=0.3, label=f"Cluster {cluster}")
             plt.legend(title='Clusters', loc='upper left', fontsize='xx-small')
             # legend1 = plt.legend(*scatter.legend_elements(),
             #         loc="lower left", title="Clusters")
