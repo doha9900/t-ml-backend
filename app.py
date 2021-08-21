@@ -15,7 +15,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
-
 app = Flask(__name__)
 cors = CORS(app, resources={r"*": {"origins": "*"}})
 app.config.from_object(os.environ['APP_SETTINGS'])
@@ -64,17 +63,39 @@ def kmeans():
         # columns_name=body["columns"]
         n_clusters=body["n_clusters"]
         init= body['init']
+        n_init= body['n_init']
+        random_state= body['random_state']
         max_iter= body['max_iter']        
         axis_x= int(body['axis_x'])
         axis_y= int(body['axis_y'])
+        result = {}
         # end requests+
         field_names = [i[0] for i in cursor.description]
         dataframe = pd.DataFrame(total_data, columns=field_names)#.values #.tolist()
         # print(dataframe)
         label_encoder = preprocessing.LabelEncoder()
         transformed_data = dataframe.apply(label_encoder.fit_transform)
-        # print(transformed_data)
-        kmeans = KMeans(n_clusters=n_clusters, init=init, max_iter=max_iter, n_init=1, random_state=0)
+        # elbow method 
+        distortions = []
+        K = range(1,10)
+        for k in K:
+            kmeanModel = KMeans(n_clusters=k, init=init, max_iter=max_iter, n_init=n_init, random_state=random_state)
+            kmeanModel.fit(transformed_data)
+            distortions.append(kmeanModel.inertia_)
+        plt.plot(K, distortions, 'bx-')
+        plt.xlabel('k')
+        plt.ylabel('Distorción')
+        plt.title('El método del codo muestra el k clusters óptimo.')
+        my_stringIObytes = io.BytesIO()
+        plt.savefig(my_stringIObytes, format='jpg')
+        # plt.savefig("graphic2.jpg")
+        my_stringIObytes.seek(0)
+        my_base64_jpgData = base64.b64encode(my_stringIObytes.read())
+        result["elbow_method"] = my_base64_jpgData.decode()
+        plt.clf() #clear current image plt
+        
+        kmeans = KMeans(n_clusters=n_clusters, init=init, max_iter=max_iter, n_init=n_init, random_state=random_state)
+        # KMEANS
         pred_y = kmeans.fit_predict(transformed_data)
         print(pred_y)
         elements = kmeans.labels_  # values from kmeans.fit_predict(transformed_data)
@@ -91,7 +112,7 @@ def kmeans():
             centroids_all_data.append(found)
         # print(centroids_values)
         # plt.scatter(transformed_data[columns_name[0]].values,transformed_data[columns_name[1]].values, s=10, c='green')
-        colors = "gcmykwb"
+        colors = "gcmykwbr"
         for cluster in range(n_clusters):
             # print(cluster)
             plt.scatter(transformed_data.iloc[pred_y==cluster, axis_x], transformed_data.iloc[pred_y==cluster, axis_y], s=10, c=colors[cluster])
@@ -106,7 +127,6 @@ def kmeans():
         dataframe.sort_values(['cluster'], ascending=False)
         # print(centroids_values)
         # print(dataframe.sort_values(['cluster'], ascending=True))
-        result = {}
         # result[""]
         field_names.append("cluster")
         centroids_details = []
