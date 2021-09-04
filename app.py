@@ -43,7 +43,7 @@ def load_data():
 
 @app.route("/algorithms", methods = ['GET', 'POST'])
 def algorithms():
-    name_algorithms = ['kmeans', 'spectral']
+    name_algorithms = ['kmeans', 'spectral'] #, + algorithms
     return jsonify({
         'algorithms':name_algorithms
         })
@@ -83,7 +83,7 @@ def kmeans():
             kmeanModel.fit(transformed_data)
             distortions.append(kmeanModel.inertia_)
         plt.plot(K, distortions, 'bx-')
-        plt.xlabel('k')
+        plt.xlabel('k clusters')
         plt.ylabel('Distorción')
         plt.title('El método del codo muestra el k clusters óptimo.')
         my_stringIObytes = io.BytesIO()
